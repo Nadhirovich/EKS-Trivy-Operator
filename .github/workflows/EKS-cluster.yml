@@ -1,9 +1,9 @@
-name: Start EKS Cluster and Scan with Trivy
+name: Start EKS Cluster and Scan with Trivy and List the Vulnerability Report Results
 
 on:
   push:
     branches:
-      - main
+      - master
     paths-ignore:
       - '**/*.md'
 
@@ -38,7 +38,7 @@ jobs:
             --nodes-max 3 \
             --managed
 
-  configure-aws-auth:
+  deploy-vulnerable-application:
     needs: create-eks-cluster
     runs-on: ubuntu-latest
     steps:
@@ -57,31 +57,35 @@ jobs:
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
 
-      # Update aws-auth ConfigMap
-      - name: Update aws-auth ConfigMap
-        run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: aws-auth
-            namespace: kube-system
-          data:
-            mapRoles: |
-            mapUsers: |
-              - userarn: arn:aws:iam::543476919432:root
-                username: root
-                groups:
-                  - system:masters
-          EOF
-
       # Deploy Vulnerable Application
       - name: Deploy Vulnerable Application
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/aquasecurity/trivy-operator/main/examples/nginx-deployment.yaml
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: nginx
+            labels:
+              app: nginx
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: nginx
+            template:
+              metadata:
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:1.16 # Known vulnerable version
+                  ports:
+                  - containerPort: 80
+          EOF
 
   deploy-trivy-operator:
-    needs: configure-aws-auth
+    needs: deploy-vulnerable-application
     runs-on: ubuntu-latest
     steps:
       # Configure AWS Credentials
@@ -92,12 +96,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
+      # Set up Kubeconfig
+      - name: Set up Kubeconfig
+        run: |
+          aws eks --region eu-central-1 update-kubeconfig --name my-eks-cluster
+
       # Install Helm
       - name: Install Helm
         run: |
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      # Install Trivy Operator
+      # Deploy Trivy Operator
       - name: Deploy Trivy Operator
         run: |
           helm repo add aqua https://aquasecurity.github.io/helm-charts/
@@ -116,12 +125,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
-      # Install kubectl
-      - name: Install kubectl
+      # Set up Kubeconfig
+      - name: Set up Kubeconfig
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
+          aws eks --region eu-central-1 update-kubeconfig --name my-eks-cluster
+
+      # Verify Kubernetes Cluster Connection
+      - name: Verify Kubernetes Cluster Connection
+        run: kubectl get nodes
 
       # Fetch Vulnerability Reports
       - name: Fetch Vulnerability Reports
@@ -139,7 +150,7 @@ jobs:
         run: |
           kubectl get vulnerabilityreports -A -o json > vulnerability-reports.json
       - name: Upload Vulnerability Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vulnerability-reports
           path: vulnerability-reports.json
@@ -156,9 +167,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
-      # Wait for a Specified Time
-      - name: Wait for 10 minutes
-        run: sleep 600
+      # Install eksctl
+      - name: Install eksctl
+        run: |
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
 
       # Delete EKS Cluster
       - name: Delete EKS Cluster
