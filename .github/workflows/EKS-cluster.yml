@@ -1,4 +1,4 @@
-name: Start EKS Cluster and Scan with Trivy and List the Vulnerability Report Results
+name: Start EKS Cluster and Scan with Trivy and List the Vul Report Results
 
 on:
   push:
