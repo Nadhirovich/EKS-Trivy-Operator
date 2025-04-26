@@ -1,3 +1,10 @@
+
+name: Configure AWS Credentials
+
+on:
+  workflow_call: # Enables this workflow to be called by other workflows
+
+
 jobs:
   aws-setup:
     runs-on: ubuntu-latest
