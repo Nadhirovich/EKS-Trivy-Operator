@@ -13,7 +13,7 @@ jobs:
     steps:
       # Set up AWS credentials
       - name: Configure AWS Credentials
-       uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+        uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
 
       # Install eksctl
       - name: Install eksctl
@@ -41,7 +41,7 @@ jobs:
     steps:
       # Step 1: Set up AWS credentials
       - name: Configure AWS Credentials
-       uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+        uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
 
       # Step 2: Install kubectl
       - name: Install kubectl
@@ -78,7 +78,7 @@ jobs:
     steps:
       # Step 1: Set up AWS credentials
       - name: Configure AWS Credentials
-       uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+        uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
 
       # Install Helm
       - name: Install Helm
