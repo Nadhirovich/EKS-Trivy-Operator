@@ -1,14 +1,15 @@
-# This is a reusable workflow to set the AWS Credentials
-
-name: Configure AWS Credentials
-
-on:
-  workflow_call:
-
 jobs:
-  setup:
+  aws-setup:
     runs-on: ubuntu-latest
     steps:
+      # Clear any pre-existing AWS credentials
+      - name: Clear Existing AWS Credentials
+        run: |
+          unset AWS_ACCESS_KEY_ID
+          unset AWS_SECRET_ACCESS_KEY
+          unset AWS_SESSION_TOKEN
+
+      # Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4.1.0
         with:
@@ -16,7 +17,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
-     # Test AWS Access
-      - name: Test AWS Access
+      # Debug AWS Identity
+      - name: Debug AWS Identity
         run: aws sts get-caller-identity
+
 
