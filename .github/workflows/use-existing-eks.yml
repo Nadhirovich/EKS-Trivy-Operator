@@ -1,9 +1,9 @@
-name: Use Existing EKS Cluster and Scan with Trivy and list report results
+name: Use Existing EKS Cluster and Scan with Trivy
 
 on:
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - '**/*.md'
 
@@ -34,7 +34,29 @@ jobs:
       # Deploy Vulnerable Application
       - name: Deploy Vulnerable Application
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/aquasecurity/trivy-operator/main/examples/nginx-deployment.yaml
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: nginx
+            labels:
+              app: nginx
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: nginx
+            template:
+              metadata:
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:1.16 # Known vulnerable version
+                  ports:
+                  - containerPort: 80
+          EOF
 
   deploy-trivy-operator:
     needs: deploy-vulnerable-application
@@ -113,8 +135,8 @@ jobs:
           aws-region: eu-central-1
 
       # Wait for a Specified Time
-      - name: Wait for 10 minutes
-        run: sleep 600
+      - name: Wait for 3 minutes
+        run: sleep 180
 
       # Delete EKS Cluster
       - name: Delete EKS Cluster
