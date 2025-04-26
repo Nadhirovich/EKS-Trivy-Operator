@@ -109,23 +109,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
-      # Install kubectl
-      - name: Install kubectl
+      # Set up Kubeconfig
+      - name: Set up Kubeconfig
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
+          aws eks --region eu-central-1 update-kubeconfig --name my-eks-cluster
+
+      # Verify Kubernetes Cluster Connection
+      - name: Verify Kubernetes Cluster Connection
+        run: kubectl get nodes
 
       # Fetch Vulnerability Reports
       - name: Fetch Vulnerability Reports
         run: |
           kubectl get vulnerabilityreports -A
-
-      # List Vulnerability Reports (Detailed)
-      - name: List Vulnerability Reports (Detailed)
-        run: |
-          echo "Listing Vulnerability Reports with Detailed Output:"
-          kubectl get vulnerabilityreports -A -o yaml
 
       # Save Reports as Artifacts
       - name: Save Reports
