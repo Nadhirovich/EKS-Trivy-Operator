@@ -3,7 +3,7 @@ name: Use Existing EKS Cluster and Scan with Trivy
 on:
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - '**/*.md'
 
@@ -82,72 +82,4 @@ jobs:
       # Install Helm
       - name: Install Helm
         run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      # Deploy Trivy Operator
-      - name: Deploy Trivy Operator
-        run: |
-          helm repo add aqua https://aquasecurity.github.io/helm-charts/
-          helm repo update
-          helm install trivy-operator aqua/trivy-operator --namespace trivy-system --create-namespace
-
-  fetch-scan-reports:
-    needs: deploy-trivy-operator
-    runs-on: ubuntu-latest
-    steps:
-      # Configure AWS Credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.1.0
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
-
-      # Install kubectl
-      - name: Install kubectl
-        run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-
-      # Fetch Vulnerability Reports
-      - name: Fetch Vulnerability Reports
-        run: |
-          kubectl get vulnerabilityreports -A
-
-      # List Vulnerability Reports (Detailed)
-      - name: List Vulnerability Reports (Detailed)
-        run: |
-          echo "Listing Vulnerability Reports with Detailed Output:"
-          kubectl get vulnerabilityreports -A -o yaml
-
-      # Save Reports as Artifacts
-      - name: Save Reports
-        run: |
-          kubectl get vulnerabilityreports -A -o json > vulnerability-reports.json
-      - name: Upload Vulnerability Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: vulnerability-reports
-          path: vulnerability-reports.json
-
-  destroy-cluster:
-    needs: fetch-scan-reports
-    runs-on: ubuntu-latest
-    steps:
-      # Configure AWS Credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.1.0
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
-
-      # Wait for a Specified Time
-      - name: Wait for 10 minutes
-        run: sleep 600
-
-      # Delete EKS Cluster
-      - name: Delete EKS Cluster
-        run: |
-          eksctl delete cluster --name my-eks-cluster --region eu-central-1
+          curl https://raw.githubusercontent
