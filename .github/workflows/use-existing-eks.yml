@@ -1,4 +1,4 @@
-name: Use Existing EKS Cluster and Scan with Trivy
+name: Use Existing EKS Cluster and Scan with Trivy and list report results
 
 on:
   push:
