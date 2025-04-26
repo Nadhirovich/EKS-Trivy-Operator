@@ -70,12 +70,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
+      # Set up Kubeconfig
+      - name: Set up Kubeconfig
+        run: |
+          aws eks --region eu-central-1 update-kubeconfig --name my-eks-cluster
+
+      # Verify Kubernetes Cluster Connection
+      - name: Verify Kubernetes Cluster Connection
+        run: kubectl get nodes
+
       # Install Helm
       - name: Install Helm
         run: |
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      # Install Trivy Operator
+      # Deploy Trivy Operator
       - name: Deploy Trivy Operator
         run: |
           helm repo add aqua https://aquasecurity.github.io/helm-charts/
@@ -135,8 +144,8 @@ jobs:
           aws-region: eu-central-1
 
       # Wait for a Specified Time
-      - name: Wait for 3 minutes
-        run: sleep 180
+      - name: Wait for 10 minutes
+        run: sleep 600
 
       # Delete EKS Cluster
       - name: Delete EKS Cluster
