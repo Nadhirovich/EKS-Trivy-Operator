@@ -3,7 +3,7 @@ name: Start EKS Cluster and Scan with Trivy and List the vul report results
 on:
   push:
     branches:
-      - main
+      - master
     paths-ignore:
       - '**/*.md'
 
