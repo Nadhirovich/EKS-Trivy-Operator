@@ -1,4 +1,4 @@
-name: Start EKS Cluster and Scan with Trivy
+name: Start EKS Cluster and Scan with Trivy and save the Vul report
 
 on:
   push:
