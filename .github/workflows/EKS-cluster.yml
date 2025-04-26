@@ -1,0 +1,146 @@
+name: Start EKS Cluster and Scan with Trivy and save the Vul report
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+
+jobs:
+  create-eks-cluster:
+    runs-on: ubuntu-latest
+    steps:
+      # Set up AWS credentials
+      - name: Configure AWS Credentials
+       uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+
+      # Install eksctl
+      - name: Install eksctl
+        run: |
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
+
+      # Create the EKS cluster
+      - name: Create EKS Cluster
+        run: |
+          eksctl create cluster \
+            --name my-eks-cluster \
+            --region eu-central-1 \
+            --nodegroup-name standard-workers \
+            --node-type t3.medium \
+            --nodes 2 \
+            --nodes-min 1 \
+            --nodes-max 3 \
+            --managed
+   
+   
+  configure-aws-auth:
+    runs-on: ubuntu-latest
+    needs: create-eks-cluster # Ensures this job runs only after create-eks-cluster is successful
+    steps:
+      # Step 1: Set up AWS credentials
+      - name: Configure AWS Credentials
+       uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+
+      # Step 2: Install kubectl
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      # Step 3: Update aws-auth ConfigMap
+      - name: Update aws-auth ConfigMap
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: aws-auth
+            namespace: kube-system
+          data:
+            mapRoles: |
+            mapUsers: |
+              - userarn: arn:aws:iam::543476919432:root
+                username: root
+                groups:
+                  - system:masters
+          EOF
+      # Step 4: Deploy a Sample Vulnerable Application
+      - name: Deploy Vulnerable Application
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/aquasecurity/trivy-operator/main/examples/nginx-deployment.yaml
+ 
+  deploy-trivy-operator:
+    runs-on: ubuntu-latest
+    needs: configure-aws-auth
+    steps:
+      # Step 1: Set up AWS credentials
+      - name: Configure AWS Credentials
+       uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+
+      # Install Helm
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      # Install Trivy Operator
+      - name: Deploy Trivy Operator
+        run: |
+          helm repo add aqua https://aquasecurity.github.io/helm-charts/
+          helm repo update
+          helm install trivy-operator aqua/trivy-operator --namespace trivy-system --create-namespace
+   
+  fetch-scan-reports:
+    runs-on: ubuntu-latest
+    needs: deploy-trivy-operator # Ensures this job runs only after deploy-trivy-operator is successful
+    steps:
+      # Step 1: Set up AWS credentials
+      - name: Configure AWS Credentials
+        uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+
+      # Install kubectl
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      # Fetch Vulnerability Reports
+      - name: Fetch Vulnerability Reports
+        run: |
+          kubectl get vulnerabilityreports -A
+      
+      # List Vulnerability Reports
+      - name: List Vulnerability Reports (Detailed)
+        run: |
+          echo "Listing Vulnerability Reports with Detailed Output:"
+          kubectl get vulnerabilityreports -A -o yaml
+      
+      # Save Reports as Artifacts
+      - name: Save Reports
+        run: |
+          kubectl get vulnerabilityreports -A -o json > vulnerability-reports.json
+      - name: Upload Vulnerability Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: vulnerability-reports
+          path: vulnerability-reports.json
+
+  destroy-cluster:
+    runs-on: ubuntu-latest
+    needs: fetch-scan-reports
+    steps:
+      # Step 1: Wait for a Specified Time
+      - name: Wait for 10 minutes
+        run: sleep 600
+
+      # Step 2: Set up AWS credentials
+      - name: Configure AWS Credentials
+        uses: Nadhirovich/EKS-Trivy-Operator/.github/workflows/aws-setup.yml@master
+
+      # Step 3: Delete EKS Cluster
+      - name: Delete EKS Cluster
+        run: |
+          eksctl delete cluster --name my-eks-cluster --region eu-central-1
