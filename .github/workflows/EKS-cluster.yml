@@ -57,6 +57,15 @@ jobs:
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
 
+      # Set up Kubeconfig
+      - name: Set up Kubeconfig
+        run: |
+          aws eks --region eu-central-1 update-kubeconfig --name my-eks-cluster
+
+      # Verify Kubernetes Cluster Connection
+      - name: Verify Kubernetes Cluster Connection
+        run: kubectl get nodes
+
       # Deploy Vulnerable Application
       - name: Deploy Vulnerable Application
         run: |
@@ -79,7 +88,7 @@ jobs:
               spec:
                 containers:
                 - name: nginx
-                  image: nginx:1.16 # Known vulnerable version
+                  image: nginx:1.16
                   ports:
                   - containerPort: 80
           EOF
@@ -142,7 +151,7 @@ jobs:
       # List Vulnerability Reports (Detailed)
       - name: List Vulnerability Reports (Detailed)
         run: |
-          echo "Listing Vulnerability Reports with Detailed Output:"
+          echo "Listing Vulnerability Reports:"
           kubectl get vulnerabilityreports -A -o yaml
 
       # Save Reports as Artifacts
