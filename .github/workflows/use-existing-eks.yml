@@ -3,7 +3,7 @@ name: Use Existing EKS Cluster and Scan with Trivy
 on:
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - '**/*.md'
 
